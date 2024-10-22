@@ -1,0 +1,273 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  superAdmin
+  serviceProvider
+  client
+}
+
+enum UserType {
+  CUSTOMER
+  PROFESSIONAL
+}
+
+enum BusinessType {
+  INDIVIDUAL
+  MULTISTAFF
+  MULTILOCATION
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+model User {
+  id               Int       @id @default(autoincrement())
+  email            String    @unique
+  password         String
+  userType         UserType
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  createdBy        Int
+  updatedAt        DateTime  @updatedAt
+  updatedBy        Int?
+  isVerified       Boolean   @default(false)
+  verificationTime DateTime?
+  lastLoginTime    DateTime  @default(now())
+  role             UserRole  @default(client)
+  createdByUser    User      @relation("CreatedBy", fields: [createdBy], references: [id])
+  createdUsers     User[]    @relation("CreatedBy")
+  updatedByUser    User?     @relation("UpdatedBy", fields: [updatedBy], references: [id])
+  updatedUsers     User[]    @relation("UpdatedBy")
+
+  professional  ProfessionalProfile?
+  customer      CustomerProfile?
+  images        Image[]
+  bookings      Booking[]            @relation(name: "UserBooking")
+  schedules     Schedule[]
+  reviews       Review[]             @relation(name: "UserReview")
+  notifications Notification[]
+  otp           OTP[]
+}
+
+model ProfessionalProfile {
+  id              Int          @id @default(autoincrement())
+  firstName       String
+  lastName        String
+  otherNames      String?
+  phoneNumber     String
+  user            User         @relation(fields: [userId], references: [id])
+  userId          Int          @unique
+  jobTitle        JobTitle     @relation(fields: [jobTitleId], references: [id])
+  jobTitleId      Int
+  businessType    BusinessType
+  businessName    String
+  credentials     String?
+  bio             String?
+  yearsExperience Int
+  location        String
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  createdBy       Int?
+  updatedAt       DateTime     @updatedAt
+  updatedBy       Int?
+  services        Service[]
+  bookings        Booking[]    @relation(name: "ProfessionalBooking")
+  reviews         Review[]     @relation(name: "ProfessionalReview")
+  Schedule        Schedule[]
+}
+
+model JobTitle {
+  id                  Int                   @id @default(autoincrement())
+  name                String
+  shortName           String
+  description         String
+  isActive            Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  ProfessionalProfile ProfessionalProfile[]
+}
+
+model CustomerProfile {
+  id                 Int                 @id @default(autoincrement())
+  firstName          String
+  lastName           String
+  otherNames         String?
+  phoneNumber        String
+  userId             Int                 @unique
+  loyaltyPoints      Int                 @default(0)
+  isActive           Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  createdBy          Int?
+  updatedAt          DateTime?           @updatedAt
+  updatedBy          Int?
+  user               User                @relation(fields: [userId], references: [id])
+  bookings           Booking[]           @relation(name: "CustomerBooking")
+  reviews            Review[]            @relation(name: "CustomerReview")
+  PreferredServices  PreferredService[]
+  PreferredTimeSlots PreferredTimeSlot[]
+  preferredServiceId Int
+}
+
+model PreferredService {
+  id         Int             @id @default(autoincrement())
+  customerId Int
+  customer   CustomerProfile @relation(fields: [customerId], references: [id])
+  serviceId  Int
+  service    Service         @relation(fields: [serviceId], references: [id])
+}
+
+model PreferredTimeSlot {
+  id         Int             @id @default(autoincrement())
+  customerId Int
+  customer   CustomerProfile @relation(fields: [customerId], references: [id])
+  dayOfWeek  Int
+  startTime  DateTime
+  endTime    DateTime
+}
+
+model Service {
+  id               Int                 @id @default(autoincrement())
+  professionalId   Int
+  serviceName      String
+  description      String
+  price            Float
+  duration         Int
+  availability     Availability[]
+  isActive         Boolean             @default(true)
+  createdAt        DateTime            @default(now())
+  createdBy        Int
+  updatedAt        DateTime            @updatedAt
+  updatedBy        Int
+  professional     ProfessionalProfile @relation(fields: [professionalId], references: [id])
+  images           Image[]
+  bookings         Booking[]
+  PreferredService PreferredService[]
+}
+
+model Availability {
+  id        Int      @id @default(autoincrement())
+  serviceId Int
+  dayOfWeek Int
+  startTime DateTime
+  endTime   DateTime
+
+  service Service @relation(fields: [serviceId], references: [id])
+}
+
+model Booking {
+  id             Int                 @id @default(autoincrement())
+  customerId     Int
+  customer       CustomerProfile     @relation(name: "CustomerBooking", fields: [customerId], references: [id])
+  serviceId      Int
+  service        Service             @relation(fields: [serviceId], references: [id])
+  professionalId Int
+  professional   ProfessionalProfile @relation(name: "ProfessionalBooking", fields: [professionalId], references: [id])
+  bookingDate    DateTime
+  status         BookingStatus
+  isActive       Boolean             @default(true)
+  createdAt      DateTime            @default(now())
+  createdBy      Int?
+  updatedAt      DateTime?           @updatedAt
+  updatedBy      Int?
+  reviews        Review[]
+
+  User     User[]     @relation(name: "UserBooking")
+  TimeSlot TimeSlot[]
+}
+
+model TimeSlot {
+  id        Int      @id @default(autoincrement())
+  startTime DateTime
+  endTime   DateTime
+  bookingId Int
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+}
+
+model Schedule {
+  id              Int                 @id @default(autoincrement())
+  professionalId  Int
+  professional    ProfessionalProfile @relation(fields: [professionalId], references: [id])
+  scheduleDetails Json
+  isActive        Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  createdBy       Int?
+  updatedAt       DateTime?           @updatedAt
+  updatedBy       Int?
+  User            User[]
+}
+
+model Review {
+  id             Int                 @id @default(autoincrement())
+  bookingId      Int
+  booking        Booking             @relation(fields: [bookingId], references: [id])
+  customerId     Int
+  customer       CustomerProfile     @relation(name: "CustomerReview", fields: [customerId], references: [id])
+  professionalId Int
+  professional   ProfessionalProfile @relation(name: "ProfessionalReview", fields: [professionalId], references: [id])
+  rating         Int
+  reviewText     String?
+  isActive       Boolean             @default(true)
+  createdAt      DateTime            @default(now())
+  createdBy      Int?
+  updatedAt      DateTime?           @updatedAt
+  updatedBy      Int?
+  User           User[]              @relation(name: "UserReview")
+}
+
+model Notification {
+  id               Int              @id @default(autoincrement())
+  userId           Int
+  user             User             @relation(fields: [userId], references: [id])
+  message          String
+  notificationType NotificationType
+  isRead           Boolean          @default(false)
+  isActive         Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  createdBy        Int
+  updatedAt        DateTime         @updatedAt
+  updatedBy        Int
+}
+
+enum NotificationType {
+  BOOKING
+  REMINDER
+  SYSTEM_ALERT
+}
+
+model OTP {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  user           User     @relation(fields: [userId], references: [id])
+  otpCode        String
+  expirationTime DateTime
+  isUsed         Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  createdBy      Int?
+  updatedAt      DateTime @updatedAt
+  updatedBy      Int?
+}
+
+model Image {
+  id          String   @id @default(uuid()) @db.Uuid
+  filePath    String
+  fileSize    Int
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      Int?
+  serviceId   Int?
+  user        User?    @relation(fields: [userId], references: [id])
+  service     Service? @relation(fields: [serviceId], references: [id])
+}
