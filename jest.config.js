@@ -1,7 +1,8 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} **/
 module.exports = {
-	testEnvironment: 'node',
-	transform: {
-		'^.+.tsx?$': ['ts-jest', {}],
-	},
+  testEnvironment: "node",
+  setupFilesAfterEnv: ["./src/singleton.ts"],
+  transform: {
+    "^.+.tsx?$": ["ts-jest", {}],
+  },
 };

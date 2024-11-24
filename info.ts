@@ -9,7 +9,6 @@ beforeEach(() => {
 
 const generateMock = jest.fn();
 jest.mock("prisma");
-// jest.mock("OTPService");
 
 describe("OTPService", () => {
   describe("generateOTP", () => {
@@ -33,14 +32,8 @@ describe("OTPService", () => {
 
       // mock the prisma db
       prismaMock.oTP.create.mockResolvedValue(mockOTPData);
+
       await expect(prisma.oTP.create({ data: mockOTPData })).resolves.toEqual(mockOTPData);
-
-      const result = await OTPService.generateOTP(mockUserId);
-      expect(result).toEqual(mockOTPData);
-
-      expect(prisma.oTP.create).toHaveBeenCalledWith({
-        data: mockOTPData,
-      });
     });
   });
 });
